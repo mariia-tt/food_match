@@ -245,6 +245,7 @@ const SHEET_URL = "https://script.google.com/macros/s/AKfycbxuQWhl-jVvZIRqjIz15J
         sendToSheets({ 
             phone: userPhone, 
             segment: profile.title,
+            archetype: profile.title,
             likes: likes.join(", "), 
             dislikes: dislikes.join(", ")
         });
