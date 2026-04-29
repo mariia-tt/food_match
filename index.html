@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Food Match !FEST</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+</head>
+<body>
+
+<!-- ЕКРАН АВТОРИЗАЦІЇ (як у index1.html) -->
+<div id="authScreen" class="screen active">
+    <div id="phoneScreenLayout">
+        <div class="phone-logo">FOOD<span>MATCH</span></div>
+        <div class="phone-tagline">Смаковий профіль через свайпи</div>
+        <div class="phone-title">Введи номер телефону,<br>щоб почати</div>
+        <div class="phone-sub">Ми надішлемо тобі персональну рекомендацію!</div>
+        
+        <div class="phone-input-wrap">
+            <span class="phone-prefix">+38</span>
+            <input class="phone-input" id="phoneInput" type="tel" inputmode="numeric" placeholder="0XX XXX XX XX" maxlength="13">
+        </div>
+        
+        <div class="phone-error" id="phoneError">Введіть коректний номер</div>
+        <button class="start-btn" id="startBtn" onclick="startApp()">Почати гру →</button>
+        <div class="phone-privacy">Номер використовується лише для надсилання рекомендації та збереження ваших уподобань</div>
+    </div>
+</div>
+
+<!-- ЕКРАН СВАЙПІВ -->
+<div id="swipeScreen" class="screen">
+    <header>
+        <div class="logo">FOOD<span>MATCH</span></div>
+        <div class="progress-dots" id="dotsContainer"></div>
+    </header>
+
+    <div id="cardArea"></div>
+
+    <div id="btnRow">
+        <button class="action-btn nope" onclick="handleBtnClick('left')">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+        <button class="action-btn skip" onclick="handleBtnClick('skip')">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.5-11.27l5.67 5.67"/></svg>
+        </button>
+        <button class="action-btn like" onclick="handleBtnClick('right')">
+            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </button>
+    </div>
+</div>
+
+<!-- ФІНАЛЬНИЙ ЕКРАН -->
+<div id="resultScreen" class="screen">
+    <div class="res-emoji" id="resEmoji"></div>
+    <h2 class="res-title" id="resTitle"></h2>
+    <p class="res-desc" id="resDesc"></p>
+    <div class="res-tags-container" id="resTags"></div> 
+    <p id="sendStatus" class="send-status"></p>
+    
+    <!-- Без перезавантаження сторінки -->
+    <button class="retry-btn" onclick="restartGame()">Пройти знову</button>
+</div>
+
+<script src="segmentation.js"></script>
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbxuQWhl-jVvZIRqjIz15J5t50DVAW0F92aSh8NAYeCvZXpLwe6Jzpz-HaDZD8HuFOw3jQ/exec";
+    let userPhone = "";
+    let likes = [];
+    let dislikes = [];
+    let currentIndex = 0;
+    let sessionDishes = [];
+
+    // МАСКА ДЛЯ ТЕЛЕФОНУ
+    document.getElementById('phoneInput').addEventListener('input', function (e) {
+        let x = this.value.replace(/\D/g, ''); 
+        if (x.length > 0 && x[0] !== '0') x = '0' + x; 
+        if (x.length > 10) x = x.substring(0, 10); 
+        
+        let formatted = x;
+        if (x.length > 3) formatted = x.substring(0, 3) + ' ' + x.substring(3);
+        if (x.length > 6) formatted = formatted.substring(0, 7) + ' ' + formatted.substring(7);
+        if (x.length > 8) formatted = formatted.substring(0, 10) + ' ' + formatted.substring(10);
+        
+        this.value = formatted;
+        document.getElementById("phoneError").classList.remove("visible");
+    });
+
+    // СТАРТ
+    function startApp() {
+        const phone = document.getElementById("phoneInput").value.replace(/\s/g, '');
+
+        if(phone.length !== 10) { 
+            document.getElementById("phoneError").classList.add("visible");
+            return; 
+        }
+
+        userPhone = phone;
+        document.getElementById("authScreen").classList.remove("active");
+        document.getElementById("swipeScreen").classList.add("active");
+        
+        startGameLogic();
+    }
+
+    // РЕСТАРТ
+    function restartGame() {
+        document.getElementById("resultScreen").classList.remove("active");
+        document.getElementById("swipeScreen").classList.add("active");
+        document.getElementById("sendStatus").textContent = "";
+        startGameLogic();
+    }
+
+    function startGameLogic() {
+        likes = [];
+        dislikes = [];
+        currentIndex = 0;
+        
+        sessionDishes = [...FOOD_DATA].sort(() => 0.5 - Math.random()).slice(0, 7);
+        renderAllCards();
+    }
+
+    // РЕНДЕР СТОПКИ КАРТОК (Усуває чорний екран при швидкому свайпі)
+    function renderAllCards() {
+        const container = document.getElementById('cardArea');
+        const dotsContainer = document.getElementById('dotsContainer');
+        container.innerHTML = '';
+        dotsContainer.innerHTML = '';
+
+        // Малюємо точечки
+        for(let i = 0; i < sessionDishes.length; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'dot' + (i === 0 ? ' active' : '');
+            dotsContainer.appendChild(dot);
+        }
+
+        // Малюємо картки з кінця, щоб перша (0) була зверху
+        for(let i = sessionDishes.length - 1; i >= 0; i--) {
+            const data = sessionDishes[i];
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.dataset.index = i;
+            card.dataset.name = data.name;
+
+            let tagsHtml = data.tags ? data.tags.map(t => `<span class="tag">${t}</span>`).join('') : '';
+
+            card.innerHTML = `
+                <div class="card-img-wrapper">
+                    <img src="${data.img}" alt="${data.name}" draggable="false">
+                </div>
+                <div class="card-info">
+                    <h2 class="card-title">${data.name}</h2>
+                    <div class="card-tags">${tagsHtml}</div>
+                    <div class="card-desc">${data.desc}</div>
+                </div>
+            `;
+            container.appendChild(card);
+
+            // Додаємо слухачі тільки для верхньої картки
+            if(i === 0) setupSwipeAndTap(card);
+        }
+    }
+
+    function setupSwipeAndTap(el) {
+        const hammertime = new Hammer(el);
+        hammertime.get('pan').set({ direction: Hammer.DIRECTION_ALL, threshold: 10 });
+
+        hammertime.on('tap', () => {
+            const descDiv = el.querySelector('.card-desc');
+            descDiv.style.display = (descDiv.style.display === 'block') ? 'none' : 'block';
+        });
+
+        hammertime.on('pan', (ev) => {
+            el.style.transition = 'none';
+            el.style.transform = `translate(${ev.deltaX}px, ${ev.deltaY}px) rotate(${ev.deltaX * 0.05}deg)`;
+        });
+
+        hammertime.on('panend', (ev) => {
+            el.style.transition = 'transform 0.3s ease-out';
+            if (ev.deltaX > 100) swipeCard(el, 'right'); 
+            else if (ev.deltaX < -100) swipeCard(el, 'left'); 
+            else if (ev.deltaY < -100) swipeCard(el, 'skip'); 
+            else el.style.transform = 'translate(0px, 0px) rotate(0deg)'; 
+        });
+    }
+
+    // Обробка кліків по кнопках
+    function handleBtnClick(direction) {
+        const container = document.getElementById('cardArea');
+        const topCard = container.lastElementChild; // Верхня картка
+        if(!topCard) return;
+        swipeCard(topCard, direction);
+    }
+
+    function swipeCard(cardEl, direction) {
+        // Забираємо можливість взаємодіяти з карткою, що летить
+        cardEl.style.pointerEvents = 'none';
+        
+        const name = cardEl.dataset.name;
+
+        if (direction === 'right') {
+            likes.push(name);
+            cardEl.style.transform = 'translateX(1000px) rotate(30deg)';
+        } else if (direction === 'left') {
+            dislikes.push(name);
+            cardEl.style.transform = 'translateX(-1000px) rotate(-30deg)';
+        } else if (direction === 'skip') {
+            cardEl.style.transform = 'translateY(-1000px) rotate(0deg)'; 
+        }
+        
+        cardEl.style.opacity = '0';
+
+        // Оновлюємо точечки
+        const dots = document.querySelectorAll('.dot');
+        if(dots[currentIndex]) dots[currentIndex].classList.remove('active');
+        currentIndex++;
+        if(dots[currentIndex]) dots[currentIndex].classList.add('active');
+
+        // Миттєво активуємо наступну картку (без чорного екрану)
+        const nextCard = cardEl.previousElementSibling;
+        if (nextCard) {
+            setupSwipeAndTap(nextCard);
+        } else {
+            setTimeout(showFinalResult, 300); // Якщо карток більше немає
+        }
+
+        // Видаляємо стару картку з DOM після анімації
+        setTimeout(() => cardEl.remove(), 400);
+    }
+
+    function showFinalResult() {
+        document.getElementById('swipeScreen').classList.remove("active");
+        
+        const profile = calculateBestSegment(likes);
+        
+        document.getElementById("resEmoji").textContent = profile.emoji;
+        document.getElementById("resTitle").textContent = profile.title;
+        document.getElementById("resDesc").textContent  = profile.desc;
+        
+        document.getElementById("resTags").innerHTML = likes.length > 0 
+            ? likes.map(n => `<span class="result-tag">${n}</span>`).join("")
+            : `<span class="result-tag">Не обрано жодної страви</span>`;
+        
+        document.getElementById("resultScreen").classList.add("active");
+
+        sendToSheets({ 
+            phone: userPhone, 
+            segment: profile.title,
+            likes: likes.join(", "), 
+            dislikes: dislikes.join(", ")
+        });
+    }
+
+    function sendToSheets(data) {
+        const status = document.getElementById("sendStatus");
+        status.textContent = "Надсилаємо дані...";
+        const params = new URLSearchParams(data).toString();
+        
+        fetch(SHEET_URL + "?" + params, { mode: 'no-cors' })
+        .then(() => { status.textContent = "✓ Дані збережено"; })
+        .catch(() => { status.textContent = "❌ Помилка збереження"; });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Manrope:wght@400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0e0808;
+  --card-bg: #1c1010;
+  --accent: #c0392b;
+  --accent2: #e74c3c;
+  --like: #27ae60;
+  --nope: #c0392b;
+  --skip: rgba(255,255,255,0.4);
+  --text: #f5f0ee;
+  --tag-bg: rgba(255,255,255,0.08);
+  --muted: rgba(245,240,238,0.5);
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: "Manrope", sans-serif; touch-action: none; }
+
+.screen { display: none; height: 100%; max-width: 480px; margin: 0 auto; flex-direction: column; position: relative; background: var(--bg); }
+.screen.active { display: flex; }
+
+/* АВТОРИЗАЦІЯ (Оригінальний стиль) */
+#phoneScreenLayout { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 28px; animation: fadeIn 0.4s ease; width: 100%; }
+.phone-logo { font-family: "Unbounded", sans-serif; font-size: 28px; font-weight: 900; letter-spacing: 2px; margin-bottom: 8px; }
+.phone-logo span { color: var(--accent2); }
+.phone-tagline { font-size: 13px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 48px; text-align: center;}
+.phone-title { font-family: "Unbounded", sans-serif; font-size: 20px; font-weight: 700; text-align: center; line-height: 1.3; margin-bottom: 12px; }
+.phone-sub { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.65; max-width: 280px; margin-bottom: 36px; }
+
+.phone-input-wrap { width: 100%; max-width: 320px; position: relative; margin-bottom: 14px; }
+.phone-prefix { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 16px; font-weight: 600; color: var(--text); pointer-events: none; z-index: 1;}
+.phone-input { width: 100%; background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 16px 16px 16px 54px; color: var(--text); font-family: "Manrope", sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 1.5px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+.phone-input:focus { border-color: var(--accent2); }
+.phone-input::placeholder { color: rgba(255,255,255,0.25); font-weight: 400; letter-spacing: 0; }
+
+.phone-error { font-size: 13px; color: var(--accent2); min-height: 18px; margin-bottom: 20px; text-align: center; opacity: 0; transition: opacity 0.2s; font-weight: bold;}
+.phone-error.visible { opacity: 1; }
+
+.start-btn { width: 100%; max-width: 320px; background: var(--accent); border: none; border-radius: 14px; padding: 17px; color: #fff; font-family: "Unbounded", sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+.start-btn:active { transform: scale(0.97); }
+
+.phone-privacy { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 16px; text-align: center; max-width: 260px; line-height: 1.5; }
+
+/* ХЕДЕР З КРАПКАМИ */
+header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; z-index: 10; }
+.logo { font-family: "Unbounded", sans-serif; font-size: 16px; font-weight: 900; letter-spacing: 1px; }
+.logo span { color: var(--accent2); }
+.progress-dots { display: flex; gap: 6px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: background 0.3s, transform 0.3s; }
+.dot.active { background: var(--text); transform: scale(1.1);}
+
+/* КАРТКИ (Віддалені від країв екрану) */
+#cardArea { flex: 1; position: relative; width: 100%; display: flex; justify-content: center; align-items: center; perspective: 1000px; }
+.card {
+  position: absolute; 
+  width: 78%; 
+  height: 82%; 
+  max-height: 380px; 
+  background: var(--card-bg);
+  border-radius: 20px; 
+  overflow: hidden; 
+  box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column; 
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease-out; 
+  cursor: pointer; 
+  touch-action: pan-y;
+  will-change: transform;
+}
+.card-img-wrapper { 
+  height: 75%; 
+  width: 100%; 
+  background: #111; 
+}
+.card-img-wrapper img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+  object-position: center; 
+  pointer-events: none; 
+}
+.card-info { 
+  padding: 18px 20px; 
+  height: 40%; 
+  background: var(--card-bg); 
+  overflow-y: auto;
+}
+.card-title { font-family: "Unbounded", sans-serif; font-size: 18px; margin-bottom: 12px; color: var(--text); }
+.card-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;}
+.tag { background: var(--tag-bg); padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; color: var(--muted); border: 1px solid rgba(255,255,255,0.05);}
+.card-desc { font-size: 13px; line-height: 1.5; color: #bbb; margin-top: 10px; display: none; }
+
+/* КНОПКИ УПРАВЛІННЯ */
+#btnRow { height: 110px; display: flex; justify-content: center; align-items: center; gap: 24px; padding-bottom: 25px; z-index: 10;}
+.action-btn { border-radius: 50%; border: none; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.1s; background: var(--card-bg);}
+.action-btn:active { transform: scale(0.85); }
+.action-btn.nope { width: 60px; height: 60px; color: var(--nope); border: 2px solid var(--nope);}
+.action-btn.like { width: 70px; height: 70px; color: var(--like); border: 2px solid var(--like); box-shadow: 0 0 15px rgba(39,174,96,0.15);}
+.action-btn.skip { width: 48px; height: 48px; border: 1px solid rgba(255,255,255,0.15); color: var(--skip); }
+.action-btn svg { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.action-btn.nope svg { width: 26px; height: 26px; stroke: var(--nope); stroke-width: 2.5; }
+.action-btn.like svg { width: 30px; height: 30px; fill: var(--like); stroke: none;}
+.action-btn.skip svg { width: 20px; height: 20px; stroke: var(--skip); stroke-width: 2;}
+
+/* ФІНАЛЬНИЙ ЕКРАН */
+#resultScreen { justify-content: center; align-items: center; text-align: center; padding: 30px 20px; }
+.res-emoji { font-size: 64px; margin-bottom: 4px; }
+.res-title { font-family: "Unbounded", sans-serif; font-size: 22px; font-weight: 900; color: var(--text); margin-bottom: 15px; }
+.res-desc { font-size: 14px; line-height: 1.65; color: var(--muted); margin-bottom: 25px; max-width: 300px;}
+.res-tags-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; width: 100%;}
+.result-tag { background: rgba(192,57,43,0.15); padding: 6px 16px; border-radius: 20px; font-size: 12px; color: #ff8a7a; border: 1px solid rgba(192,57,43,0.3); font-weight: 600;}
+.send-status { margin-bottom: 20px; font-size: 13px; color: var(--like); font-weight: 600; min-height: 20px;}
+.retry-btn { background: rgba(255,255,255,0.08); color: var(--muted); border: 1px solid rgba(255,255,255,0.2); padding: 12px 28px; font-size: 13px; border-radius: 30px; cursor: pointer; transition: 0.2s;}
+.retry-btn:active { background: rgba(255,255,255,0.15); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
