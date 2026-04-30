@@ -156,7 +156,7 @@ function setupSwipeAndTap(el) {
     const imgWrapper = el.querySelector('.card-img-wrapper');
     if (!imgWrapper) return;
 
-    const SWIPE_X = window.innerWidth * 0.18;
+    const SWIPE_X = window.innerWidth * 0.1;
     let startX = 0, startY = 0, curX = 0, tracking = false;
 
     imgWrapper.addEventListener('touchstart', (e) => {
