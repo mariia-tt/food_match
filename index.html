@@ -9,7 +9,7 @@
 </head>
 <body>
 
-<!-- ЕКРАН АВТОРИЗАЦІЇ (як у index1.html) -->
+<!-- ЕКРАН АВТОРИЗАЦІЇ -->
 <div id="authScreen" class="screen active">
     <div id="phoneScreenLayout">
         <div class="phone-logo">FOOD<span>MATCH</span></div>
@@ -57,209 +57,224 @@
     <p class="res-desc" id="resDesc"></p>
     <div class="res-tags-container" id="resTags"></div> 
     <p id="sendStatus" class="send-status"></p>
-    
-    <!-- Без перезавантаження сторінки -->
     <button class="retry-btn" onclick="restartGame()">Пройти знову</button>
 </div>
 
 <script src="segmentation.js"></script>
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxuQWhl-jVvZIRqjIz15J5t50DVAW0F92aSh8NAYeCvZXpLwe6Jzpz-HaDZD8HuFOw3jQ/exec";
-    let userPhone = "";
-    let likes = [];
-    let dislikes = [];
-    let currentIndex = 0;
-    let sessionDishes = [];
 
-    // МАСКА ДЛЯ ТЕЛЕФОНУ
-    document.getElementById('phoneInput').addEventListener('input', function (e) {
-        let x = this.value.replace(/\D/g, ''); 
-        if (x.length > 0 && x[0] !== '0') x = '0' + x; 
-        if (x.length > 10) x = x.substring(0, 10); 
-        
-        let formatted = x;
-        if (x.length > 3) formatted = x.substring(0, 3) + ' ' + x.substring(3);
-        if (x.length > 6) formatted = formatted.substring(0, 7) + ' ' + formatted.substring(7);
-        if (x.length > 8) formatted = formatted.substring(0, 10) + ' ' + formatted.substring(10);
-        
-        this.value = formatted;
-        document.getElementById("phoneError").classList.remove("visible");
-    });
+let userPhone = "";
+let likes = [];
+let dislikes = [];
+let currentIndex = 0;
+let sessionDishes = [];
 
-    // СТАРТ
-    function startApp() {
-        const phone = document.getElementById("phoneInput").value.replace(/\s/g, '');
+// ЗАХИСТ ВІД ПОДВІЙНОГО СВАЙПУ
+let isSwiping = false;
 
-        if(phone.length !== 10) { 
-            document.getElementById("phoneError").classList.add("visible");
-            return; 
-        }
+// МАСКА ДЛЯ ТЕЛЕФОНУ
+document.getElementById('phoneInput').addEventListener('input', function () {
+    let x = this.value.replace(/\D/g, '');
+    if (x.length > 0 && x[0] !== '0') x = '0' + x;
+    if (x.length > 10) x = x.substring(0, 10);
+    let formatted = x;
+    if (x.length > 3) formatted = x.substring(0, 3) + ' ' + x.substring(3);
+    if (x.length > 6) formatted = formatted.substring(0, 7) + ' ' + formatted.substring(7);
+    if (x.length > 8) formatted = formatted.substring(0, 10) + ' ' + formatted.substring(10);
+    this.value = formatted;
+    document.getElementById("phoneError").classList.remove("visible");
+});
 
-        userPhone = phone;
-        document.getElementById("authScreen").classList.remove("active");
-        document.getElementById("swipeScreen").classList.add("active");
-        
-        startGameLogic();
+function startApp() {
+    const phone = document.getElementById("phoneInput").value.replace(/\s/g, '');
+    if (phone.length !== 10) {
+        document.getElementById("phoneError").classList.add("visible");
+        return;
+    }
+    userPhone = phone;
+    document.getElementById("authScreen").classList.remove("active");
+    document.getElementById("swipeScreen").classList.add("active");
+    startGameLogic();
+}
+
+function restartGame() {
+    document.getElementById("resultScreen").classList.remove("active");
+    document.getElementById("swipeScreen").classList.add("active");
+    document.getElementById("sendStatus").textContent = "";
+    startGameLogic();
+}
+
+function startGameLogic() {
+    likes = [];
+    dislikes = [];
+    currentIndex = 0;
+    isSwiping = false;
+    sessionDishes = [...FOOD_DATA].sort(() => 0.5 - Math.random()).slice(0, 7);
+    renderAllCards();
+}
+
+function renderAllCards() {
+    const container = document.getElementById('cardArea');
+    const dotsContainer = document.getElementById('dotsContainer');
+    container.innerHTML = '';
+    dotsContainer.innerHTML = '';
+
+    for (let i = 0; i < sessionDishes.length; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot' + (i === 0 ? ' active' : '');
+        dotsContainer.appendChild(dot);
     }
 
-    // РЕСТАРТ
-    function restartGame() {
-        document.getElementById("resultScreen").classList.remove("active");
-        document.getElementById("swipeScreen").classList.add("active");
-        document.getElementById("sendStatus").textContent = "";
-        startGameLogic();
+    for (let i = sessionDishes.length - 1; i >= 0; i--) {
+        const data = sessionDishes[i];
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.index = i;
+        card.dataset.name = data.name;
+
+        const tagsHtml = data.tags ? data.tags.map(t => `<span class="tag">${t}</span>`).join('') : '';
+        card.innerHTML = `
+            <div class="card-img-wrapper">
+                <img src="${data.img}" alt="${data.name}" draggable="false">
+            </div>
+            <div class="card-info">
+                <h2 class="card-title">${data.name}</h2>
+                <div class="card-tags">${tagsHtml}</div>
+                <div class="card-desc">${data.desc}</div>
+            </div>
+        `;
+        container.appendChild(card);
+        if (i === 0) setupSwipeAndTap(card);
     }
+}
 
-    function startGameLogic() {
-        likes = [];
-        dislikes = [];
-        currentIndex = 0;
-        
-        sessionDishes = [...FOOD_DATA].sort(() => 0.5 - Math.random()).slice(0, 7);
-        renderAllCards();
-    }
-
-    // РЕНДЕР СТОПКИ КАРТОК (Усуває чорний екран при швидкому свайпі)
-    function renderAllCards() {
-        const container = document.getElementById('cardArea');
-        const dotsContainer = document.getElementById('dotsContainer');
-        container.innerHTML = '';
-        dotsContainer.innerHTML = '';
-
-        // Малюємо точечки
-        for(let i = 0; i < sessionDishes.length; i++) {
-            const dot = document.createElement('div');
-            dot.className = 'dot' + (i === 0 ? ' active' : '');
-            dotsContainer.appendChild(dot);
-        }
-
-        // Малюємо картки з кінця, щоб перша (0) була зверху
-        for(let i = sessionDishes.length - 1; i >= 0; i--) {
-            const data = sessionDishes[i];
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.dataset.index = i;
-            card.dataset.name = data.name;
-
-            let tagsHtml = data.tags ? data.tags.map(t => `<span class="tag">${t}</span>`).join('') : '';
-
-            card.innerHTML = `
-                <div class="card-img-wrapper">
-                    <img src="${data.img}" alt="${data.name}" draggable="false">
-                </div>
-                <div class="card-info">
-                    <h2 class="card-title">${data.name}</h2>
-                    <div class="card-tags">${tagsHtml}</div>
-                    <div class="card-desc">${data.desc}</div>
-                </div>
-            `;
-            container.appendChild(card);
-
-            // Додаємо слухачі тільки для верхньої картки
-            if(i === 0) setupSwipeAndTap(card);
-        }
-    }
-
-    function setupSwipeAndTap(el) {
-        const hammertime = new Hammer(el);
-        hammertime.get('pan').set({ direction: Hammer.DIRECTION_ALL, threshold: 10 });
-
-        hammertime.on('tap', () => {
+function setupSwipeAndTap(el) {
+    // ФІК 1: тап через нативні touch-події — надійно на iOS і Android
+    // Hammer.tap конфліктує з pan і часто не спрацьовує на мобільному
+    let touchStartX = 0, touchStartY = 0;
+    el.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    el.addEventListener('touchend', (e) => {
+        const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
+        const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+        // Рух < 10px — це точно тап, а не початок свайпу
+        if (dx < 10 && dy < 10) {
             const descDiv = el.querySelector('.card-desc');
             descDiv.style.display = (descDiv.style.display === 'block') ? 'none' : 'block';
-        });
-
-        hammertime.on('pan', (ev) => {
-            el.style.transition = 'none';
-            el.style.transform = `translate(${ev.deltaX}px, ${ev.deltaY}px) rotate(${ev.deltaX * 0.05}deg)`;
-        });
-
-        hammertime.on('panend', (ev) => {
-            el.style.transition = 'transform 0.3s ease-out';
-            if (ev.deltaX > 100) swipeCard(el, 'right'); 
-            else if (ev.deltaX < -100) swipeCard(el, 'left'); 
-            else if (ev.deltaY < -100) swipeCard(el, 'skip'); 
-            else el.style.transform = 'translate(0px, 0px) rotate(0deg)'; 
-        });
-    }
-
-    // Обробка кліків по кнопках
-    function handleBtnClick(direction) {
-        const container = document.getElementById('cardArea');
-        const topCard = container.lastElementChild; // Верхня картка
-        if(!topCard) return;
-        swipeCard(topCard, direction);
-    }
-
-    function swipeCard(cardEl, direction) {
-        // Забираємо можливість взаємодіяти з карткою, що летить
-        cardEl.style.pointerEvents = 'none';
-        
-        const name = cardEl.dataset.name;
-
-        if (direction === 'right') {
-            likes.push(name);
-            cardEl.style.transform = 'translateX(1000px) rotate(30deg)';
-        } else if (direction === 'left') {
-            dislikes.push(name);
-            cardEl.style.transform = 'translateX(-1000px) rotate(-30deg)';
-        } else if (direction === 'skip') {
-            cardEl.style.transform = 'translateY(-1000px) rotate(0deg)'; 
         }
-        
-        cardEl.style.opacity = '0';
+    }, { passive: true });
 
-        // Оновлюємо точечки
-        const dots = document.querySelectorAll('.dot');
-        if(dots[currentIndex]) dots[currentIndex].classList.remove('active');
-        currentIndex++;
-        if(dots[currentIndex]) dots[currentIndex].classList.add('active');
+    const hammer = new Hammer.Manager(el);
+    const pan = new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 12 });
+    hammer.add(pan);
 
-        // Миттєво активуємо наступну картку (без чорного екрану)
-        const nextCard = cardEl.previousElementSibling;
+    // ФІК 3: адаптивний поріг — 30% ширини/20% висоти екрану
+    const SWIPE_X = window.innerWidth * 0.30;
+    const SWIPE_Y = window.innerHeight * 0.20;
+
+    hammer.on('pan', (ev) => {
+        if (isSwiping) return;
+        el.style.transition = 'none';
+        el.style.transform = `translate(${ev.deltaX}px, ${ev.deltaY}px) rotate(${ev.deltaX * 0.04}deg)`;
+    });
+
+    hammer.on('panend', (ev) => {
+        if (isSwiping) return;
+        el.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+        if (ev.deltaX > SWIPE_X) {
+            swipeCard(el, 'right');
+        } else if (ev.deltaX < -SWIPE_X) {
+            swipeCard(el, 'left');
+        } else if (ev.deltaY < -SWIPE_Y && Math.abs(ev.deltaX) < SWIPE_X) {
+            swipeCard(el, 'skip');
+        } else {
+            el.style.transform = 'translate(0px, 0px) rotate(0deg)';
+        }
+    });
+}
+
+function handleBtnClick(direction) {
+    if (isSwiping) return;
+    const container = document.getElementById('cardArea');
+    const topCard = container.lastElementChild;
+    if (!topCard) return;
+    topCard.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+    swipeCard(topCard, direction);
+}
+
+function swipeCard(cardEl, direction) {
+    if (isSwiping) return;
+    // ФІК 2: блокуємо будь-які нові свайпи поки летить поточна картка
+    isSwiping = true;
+    cardEl.style.pointerEvents = 'none';
+
+    const name = cardEl.dataset.name;
+    if (direction === 'right') {
+        likes.push(name);
+        cardEl.style.transform = 'translateX(120vw) rotate(30deg)';
+    } else if (direction === 'left') {
+        dislikes.push(name);
+        cardEl.style.transform = 'translateX(-120vw) rotate(-30deg)';
+    } else if (direction === 'skip') {
+        cardEl.style.transform = 'translateY(-120vh)';
+    }
+    cardEl.style.opacity = '0';
+
+    const dots = document.querySelectorAll('.dot');
+    if (dots[currentIndex]) dots[currentIndex].classList.remove('active');
+    currentIndex++;
+    if (dots[currentIndex]) dots[currentIndex].classList.add('active');
+
+    // Видаляємо картку і розблоковуємо після завершення анімації
+    setTimeout(() => {
+        cardEl.remove();
+        isSwiping = false;
+
+        const container = document.getElementById('cardArea');
+        const nextCard = container.lastElementChild;
         if (nextCard) {
             setupSwipeAndTap(nextCard);
         } else {
-            setTimeout(showFinalResult, 300); // Якщо карток більше немає
+            showFinalResult();
         }
+    }, 320);
+}
 
-        // Видаляємо стару картку з DOM після анімації
-        setTimeout(() => cardEl.remove(), 400);
-    }
+function showFinalResult() {
+    document.getElementById('swipeScreen').classList.remove("active");
 
-    function showFinalResult() {
-        document.getElementById('swipeScreen').classList.remove("active");
-        
-        const profile = calculateBestSegment(likes);
-        
-        document.getElementById("resEmoji").textContent = profile.emoji;
-        document.getElementById("resTitle").textContent = profile.title;
-        document.getElementById("resDesc").textContent  = profile.desc;
-        
-        document.getElementById("resTags").innerHTML = likes.length > 0 
-            ? likes.map(n => `<span class="result-tag">${n}</span>`).join("")
-            : `<span class="result-tag">Не обрано жодної страви</span>`;
-        
-        document.getElementById("resultScreen").classList.add("active");
+    const profile = calculateBestSegment(likes);
 
-        sendToSheets({ 
-            phone: userPhone, 
-            segment: profile.title,
-            archetype: profile.title,
-            likes: likes.join(", "), 
-            dislikes: dislikes.join(", ")
-        });
-    }
+    document.getElementById("resEmoji").textContent = profile.emoji;
+    document.getElementById("resTitle").textContent = profile.title;
+    document.getElementById("resDesc").textContent = profile.desc;
 
-    function sendToSheets(data) {
-        const status = document.getElementById("sendStatus");
-        status.textContent = "Надсилаємо дані...";
-        const params = new URLSearchParams(data).toString();
-        
-        fetch(SHEET_URL + "?" + params, { mode: 'no-cors' })
+    document.getElementById("resTags").innerHTML = likes.length > 0
+        ? likes.map(n => `<span class="result-tag">${n}</span>`).join("")
+        : `<span class="result-tag">Не обрано жодної страви</span>`;
+
+    document.getElementById("resultScreen").classList.add("active");
+
+    sendToSheets({
+        phone: userPhone,
+        segment: profile.title,
+        archetype: profile.title,
+        likes: likes.join(", "),
+        dislikes: dislikes.join(", ")
+    });
+}
+
+function sendToSheets(data) {
+    const status = document.getElementById("sendStatus");
+    status.textContent = "Надсилаємо дані...";
+    const params = new URLSearchParams(data).toString();
+    fetch(SHEET_URL + "?" + params, { mode: 'no-cors' })
         .then(() => { status.textContent = "✓ Дані збережено"; })
         .catch(() => { status.textContent = "❌ Помилка збереження"; });
-    }
+}
 </script>
 </body>
 </html>
