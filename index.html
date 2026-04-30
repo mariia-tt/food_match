@@ -150,35 +150,34 @@ function renderAllCards() {
 }
 
 function setupSwipeAndTap(el) {
-    // ФІК 1: тап через нативні touch-події — надійно на iOS і Android
-    // Hammer.tap конфліктує з pan і часто не спрацьовує на мобільному
-    let touchStartX = 0, touchStartY = 0;
-    el.addEventListener('touchstart', (e) => {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-    el.addEventListener('touchend', (e) => {
-        const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
-        const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
-        // Рух < 10px — це точно тап, а не початок свайпу
-        if (dx < 10 && dy < 10) {
-            const descDiv = el.querySelector('.card-desc');
-            descDiv.style.display = (descDiv.style.display === 'block') ? 'none' : 'block';
-        }
-    }, { passive: true });
+    // Показуємо опис одразу — не ховаємо за тапом
+    const descDiv = el.querySelector('.card-desc');
+    if (descDiv) descDiv.style.display = 'block';
 
-    const hammer = new Hammer.Manager(el);
+    // card-info скролиться вільно — зупиняємо propagation touch-подій
+    // щоб Hammer не перехоплював вертикальний скрол у нижній частині
+    const cardInfo = el.querySelector('.card-info');
+    if (cardInfo) {
+        cardInfo.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+        cardInfo.addEventListener('touchmove',  (e) => e.stopPropagation(), { passive: true });
+        cardInfo.addEventListener('touchend',   (e) => e.stopPropagation(), { passive: true });
+    }
+
+    // Hammer вішаємо тільки на зону фото — там нема скролу, тільки свайп
+    const imgWrapper = el.querySelector('.card-img-wrapper');
+    const swipeTarget = imgWrapper || el;
+
+    const hammer = new Hammer.Manager(swipeTarget);
     const pan = new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 12 });
     hammer.add(pan);
 
-    // ФІК 3: адаптивний поріг — 30% ширини/20% висоти екрану
+    // Адаптивний поріг — 30% ширини екрану
     const SWIPE_X = window.innerWidth * 0.30;
-    const SWIPE_Y = window.innerHeight * 0.20;
 
     hammer.on('pan', (ev) => {
         if (isSwiping) return;
         el.style.transition = 'none';
-        el.style.transform = `translate(${ev.deltaX}px, ${ev.deltaY}px) rotate(${ev.deltaX * 0.04}deg)`;
+        el.style.transform = `translate(${ev.deltaX}px, ${ev.deltaY * 0.3}px) rotate(${ev.deltaX * 0.04}deg)`;
     });
 
     hammer.on('panend', (ev) => {
@@ -188,8 +187,6 @@ function setupSwipeAndTap(el) {
             swipeCard(el, 'right');
         } else if (ev.deltaX < -SWIPE_X) {
             swipeCard(el, 'left');
-        } else if (ev.deltaY < -SWIPE_Y && Math.abs(ev.deltaX) < SWIPE_X) {
-            swipeCard(el, 'skip');
         } else {
             el.style.transform = 'translate(0px, 0px) rotate(0deg)';
         }
