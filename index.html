@@ -264,14 +264,6 @@ function showFinalResult() {
     });
 }
 
-function sendToSheets(data) {
-    const status = document.getElementById("sendStatus");
-    status.textContent = "Надсилаємо дані...";
-    const params = new URLSearchParams(data).toString();
-    fetch(SHEET_URL + "?" + params, { mode: 'no-cors' })
-        .then(() => { status.textContent = "✓ Дані збережено"; })
-        .catch(() => { status.textContent = "❌ Помилка збереження"; });
-}
 </script>
 </body>
 </html>
