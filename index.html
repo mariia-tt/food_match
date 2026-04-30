@@ -150,47 +150,46 @@ function renderAllCards() {
 }
 
 function setupSwipeAndTap(el) {
-    // Показуємо опис одразу — не ховаємо за тапом
     const descDiv = el.querySelector('.card-desc');
     if (descDiv) descDiv.style.display = 'block';
 
-    // card-info скролиться вільно — зупиняємо propagation touch-подій
-    // щоб Hammer не перехоплював вертикальний скрол у нижній частині
-    const cardInfo = el.querySelector('.card-info');
-    if (cardInfo) {
-        cardInfo.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
-        cardInfo.addEventListener('touchmove',  (e) => e.stopPropagation(), { passive: true });
-        cardInfo.addEventListener('touchend',   (e) => e.stopPropagation(), { passive: true });
-    }
-
-    // Hammer вішаємо тільки на зону фото — там нема скролу, тільки свайп
     const imgWrapper = el.querySelector('.card-img-wrapper');
-    const swipeTarget = imgWrapper || el;
+    if (!imgWrapper) return;
 
-    const hammer = new Hammer.Manager(swipeTarget);
-    const pan = new Hammer.Pan({ direction: Hammer.DIRECTION_ALL, threshold: 12 });
-    hammer.add(pan);
+    const SWIPE_X = window.innerWidth * 0.28;
+    let startX = 0, startY = 0, curX = 0, tracking = false;
 
-    // Адаптивний поріг — 30% ширини екрану
-    const SWIPE_X = window.innerWidth * 0.30;
-
-    hammer.on('pan', (ev) => {
+    imgWrapper.addEventListener('touchstart', (e) => {
         if (isSwiping) return;
+        const t = e.touches[0];
+        startX = t.clientX; startY = t.clientY; curX = 0;
+        tracking = true;
         el.style.transition = 'none';
-        el.style.transform = `translate(${ev.deltaX}px, ${ev.deltaY * 0.3}px) rotate(${ev.deltaX * 0.04}deg)`;
-    });
+    }, { passive: true });
 
-    hammer.on('panend', (ev) => {
-        if (isSwiping) return;
+    imgWrapper.addEventListener('touchmove', (e) => {
+        if (!tracking || isSwiping) return;
+        const t = e.touches[0];
+        curX = t.clientX - startX;
+        const curY = t.clientY - startY;
+        if (Math.abs(curX) > Math.abs(curY) * 1.2) {
+            e.preventDefault();
+            el.style.transform = `translateX(${curX}px) rotate(${curX * 0.04}deg)`;
+        }
+    }, { passive: false });
+
+    imgWrapper.addEventListener('touchend', () => {
+        if (!tracking || isSwiping) return;
+        tracking = false;
         el.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-        if (ev.deltaX > SWIPE_X) {
+        if (curX > SWIPE_X) {
             swipeCard(el, 'right');
-        } else if (ev.deltaX < -SWIPE_X) {
+        } else if (curX < -SWIPE_X) {
             swipeCard(el, 'left');
         } else {
-            el.style.transform = 'translate(0px, 0px) rotate(0deg)';
+            el.style.transform = 'translate(0,0) rotate(0deg)';
         }
-    });
+    }, { passive: true });
 }
 
 function handleBtnClick(direction) {
@@ -264,6 +263,14 @@ function showFinalResult() {
     });
 }
 
+function sendToSheets(data) {
+    const status = document.getElementById("sendStatus");
+    status.textContent = "Надсилаємо дані...";
+    const params = new URLSearchParams(data).toString();
+    fetch(SHEET_URL + "?" + params, { mode: 'no-cors' })
+        .then(() => { status.textContent = "✓ Дані збережено"; })
+        .catch(() => { status.textContent = "❌ Помилка збереження"; });
+}
 </script>
 </body>
 </html>
