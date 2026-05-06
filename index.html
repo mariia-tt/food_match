@@ -239,6 +239,28 @@ function swipeCard(cardEl, direction) {
     }, 320);
 }
 
+function sendToSheets(data) {
+    const params = new URLSearchParams({
+        time: new Date().toLocaleString("uk-UA"),
+        phone: data.phone || "",
+        archetype: data.archetype || "",
+        likes: data.likes || "",
+        dislikes: data.dislikes || ""
+    });
+
+    fetch(SHEET_URL + "?" + params.toString())
+        .then(r => r.json())
+        .then(json => {
+            if (json.status === "ok") {
+                document.getElementById("sendStatus").textContent = "✅";
+            }
+        })
+        .catch(err => {
+            console.error("Помилка:", err);
+            document.getElementById("sendStatus").textContent = "⚠️";
+        });
+}
+    
 function showFinalResult() {
     document.getElementById('swipeScreen').classList.remove("active");
 
